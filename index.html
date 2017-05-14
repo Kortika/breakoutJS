@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <title>Gamedev Canvas Workshop</title>
+    <script type='text/javascript' src='https://code.jquery.com/jquery-3.2.1.min.js'></script>
+    <script type='text/javascript' src='generics.js'></script>
+    <script type='text/javascript' src='breakout.js'></script>
+    <link rel="stylesheet" type="text/css" href="index.css">
+</head>
+<body>
+
+<canvas id="myCanvas" width="480" height="320"></canvas>
+
+<script>
+    new Breakout({
+        "docuemnt": document,
+        "canvas": "myCanvas"
+    }).start();
+
+</script>
+</body>
+</html>
