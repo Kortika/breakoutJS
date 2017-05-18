@@ -23,4 +23,3 @@ Function.prototype.method = function (name, func) {
 };
 
 
-console.log(Math.cos(Math.PI / 2));

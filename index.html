@@ -3,20 +3,48 @@
 <head>
     <meta charset="utf-8"/>
     <title>Gamedev Canvas Workshop</title>
+    <!-- JQuery -->
     <script type='text/javascript' src='https://code.jquery.com/jquery-3.2.1.min.js'></script>
+    <!-- Bootstrap CSS -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap JS -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+
     <script type='text/javascript' src='generics.js'></script>
     <script type='text/javascript' src='breakout.js'></script>
     <link rel="stylesheet" type="text/css" href="index.css">
 </head>
 <body>
+<div class="modal fade" id="dialoogvenster" tabindex="-1" role="dialog" aria-labelledby="dialoogvensterTitel"
+     aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title" id="dialoogvensterTitel"></h4>
+            </div>
+            <div class="modal-body">
+                <p></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn" data-dismiss="modal">OK</button>
+            </div>
+        </div><!-- /.modal-content -->
+    </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
 
 <canvas id="myCanvas" width="480" height="320"></canvas>
 
+
 <script>
     new Breakout({
-        "selector": "myCanvas"
+        "selector": "myCanvas",
+        "brickRowCount": 3,
+        "brickColumnCount": 5
     });
 
 </script>
+
 </body>
 </html>
