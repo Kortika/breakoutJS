@@ -10,6 +10,9 @@ class Breakout {
 
     }
 
+    /**
+     * The animation where everything unfolds
+     */
     draw() {
 
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -33,15 +36,17 @@ class Breakout {
 
 
     addEventHandlers() {
-        $(document).keydown((e) => this.paddle.keyHandler(e, true));
-        $(document).keyup((e) => this.paddle.keyHandler(e, false));
-        $(document).keydown((e) => this.paddle.speedHandler(e, 14));
-        $(document).keyup((e) => this.paddle.speedHandler(e, this.paddle.defaultDx));
-        $("#dialoogvenster").find('.btn').click(() => {
+        let $document = $(document);
+        let $dialoogvenster = $("#dialoogvenster");
+        $document.keydown((e) => this.paddle.keyHandler(e, true));
+        $document.keyup((e) => this.paddle.keyHandler(e, false));
+        $document.keydown((e) => this.paddle.speedHandler(e, 14));
+        $document.keyup((e) => this.paddle.speedHandler(e, this.paddle.defaultDx));
+        $dialoogvenster.find('.btn').click(() => {
             this.animationID = requestAnimationFrame(() => this.draw());
             this.newGame();
         });
-        $("#dialoogvenster").find('.close').click(() => {
+        $dialoogvenster.find('.close').click(() => {
             this.animationID = requestAnimationFrame(() => this.draw());
             this.newGame();
         });
@@ -405,7 +410,7 @@ function paddleBallCollision(ball, paddle) {
 
             let relativeDist = (ball.x - paddle.x) / paddle.width;
 
-            let oneFifty = (2 * Math.PI) / 3 + Math.PI / 6
+            let oneFifty = (2 * Math.PI) / 3 + Math.PI / 6;
             /**  150 - 30 degree range, left and right half of the paddle respectively
              *   Horizontal reflection aren't calculated. (180 and 0 degree)
              * **/
