@@ -5,33 +5,54 @@ class Breakout {
         this.bricksRowCount = infoObj["brickRowCount"];
         this.bricksColumnCount = infoObj["brickColumnCount"];
         this.newGame();
-        this.bindKeyHandlers();
-        this.animationID = setInterval(() => this.draw(), 10);
+        this.addEventHandlers();
+        this.draw();
 
     }
 
     draw() {
+
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         ballWallCollision(this.ball, this.canvas.height, this.canvas.width);
         paddleBallCollision(this.ball, this.paddle);
-        this.bricks.forEach((row, index) => row.forEach((brick, index1) => brick.draw()));
+
+        if (brickBallCollision(this.ball, this.bricks, this.bricksRowCount, this.bricksColumnCount)) {
+            this.bricksColor = getRandomColor();
+            this.score.increment();
+        }
+        this.bricks.forEach((row, index) => row.filter(e => e !== null).forEach((brick, index1) => brick.draw(this.bricksColor)));
         this.paddle.draw();
         this.ball.draw();
+        this.score.draw();
+        this.life.draw();
+        this.animationID = requestAnimationFrame(() => this.draw());
         this.gameOverCheck();
+
+
     }
 
 
-    bindKeyHandlers() {
+    addEventHandlers() {
         $(document).keydown((e) => this.paddle.keyHandler(e, true));
         $(document).keyup((e) => this.paddle.keyHandler(e, false));
         $(document).keydown((e) => this.paddle.speedHandler(e, 14));
         $(document).keyup((e) => this.paddle.speedHandler(e, this.paddle.defaultDx));
+        $("#dialoogvenster").find('.btn').click(() => {
+            this.animationID = requestAnimationFrame(() => this.draw());
+            this.newGame();
+        });
+        $("#dialoogvenster").find('.close').click(() => {
+            this.animationID = requestAnimationFrame(() => this.draw());
+            this.newGame();
+        });
     }
 
     newGame() {
-        this.isOver = false;
         this.ball = new Ball(this.canvas, this.ctx);
         this.paddle = new Paddle(this.canvas, this.ctx, 10, 75);
+        this.bricksColor = "#0095DD";
+        this.score = new Info(this.canvas, this.ctx, "Score: ", 0, 8, 20);
+        this.life = new Info(this.canvas, this.ctx, "Life: ", 3, this.canvas.width - 65, 20);
         this.constructBricks(this.bricksRowCount, this.bricksColumnCount, 20, 75, 10, 30, 30);
     }
 
@@ -64,20 +85,30 @@ class Breakout {
     }
 
     /**
-     * Throws a game over box if the ball hit the bottom screen.
+     * Throws a "game over" dialogue if the ball hit the bottom screen.
      *
      */
     gameOverCheck() {
-        let ball = this.ball;
-        if (ball.y + ball.dY > this.canvas.height - ball.radius) {
-            let $newGameBtn = dialog("#dialoogvenster", "danger", "Starting new game.", "Failed!").find('.btn');
-            console.log("old" + this.animationID);
-            clearInterval(this.animationID);
-            $newGameBtn.unbind().click(() => {
-                this.animationID = setInterval(() => this.draw(), 10);
-                console.log("new " + this.animationID);
-                this.newGame();
-            });
+        /**
+         * Winning check
+         */
+
+        if (this.score.value === this.bricksRowCount * this.bricksColumnCount) {
+            dialog("#dialoogvenster", "success", "Starting new game...", "Victory!");
+            cancelAnimationFrame(this.animationID);
+        }
+
+        /**
+         * Losing check
+         */
+        if (this.ball.y + this.ball.dY > this.canvas.height - this.ball.radius) {
+            this.life.decrement();
+            this.ball.reset();
+            this.paddle.reset();
+            if (this.life.value === 0) {
+                dialog("#dialoogvenster", "danger", "Starting new game...", "Failed!");
+                cancelAnimationFrame(this.animationID);
+            }
         }
     }
 
@@ -90,10 +121,12 @@ class Shape {
      * An arbitrary shape which could be constructed in this breakout game.
      * @param canvas the html5 canvas where the shape will be drawn (Might need it ?)
      * @param ctx the context in which the shape will be drawn in (2d)
+     * @param color the fill color of the shape.
      */
-    constructor(canvas, ctx) {
+    constructor(canvas, ctx, color = "#0095DD") {
         this.canvas = canvas;
         this.ctx = ctx;
+        this.color = color;
     }
 
     /**
@@ -109,8 +142,34 @@ class Shape {
         ctx.fillStyle = color;
         ctx.fill();
         ctx.closePath();
+        this.color = color;
     }
 
+
+}
+
+class Info extends Shape {
+    constructor(canvas, ctx, message, value, x, y) {
+        super(canvas, ctx);
+        this.value = value;
+        this.message = message;
+        this.x = x;
+        this.y = y;
+    }
+
+    draw() {
+        this.ctx.font = "16px Arial";
+        this.ctx.fillStyle = "#0095DD";
+        this.ctx.fillText(this.message + this.value, this.x, this.y);
+    }
+
+    increment() {
+        this.value++;
+    }
+
+    decrement() {
+        this.value--;
+    }
 
 }
 
@@ -129,24 +188,37 @@ class Rectangle extends Shape {
     }
 }
 
+
 class Paddle extends Rectangle {
     constructor(canvas, ctx, height, width) {
         super(canvas, ctx, height, width, (canvas.width - width) / 2, (canvas.height - height));
         this.rightPressed = false;
         this.leftPressed = false;
-        this.defaultDx = 3;
-        this.dx = 3;
-        this.velocity = 0;
+        this.defaultDx = 7;
+        this.dx = 7;
+        this.canMove = true;
 
+    }
+
+    /**
+     * Resetting the paddle should prevent it from moving for half a second.
+     */
+    reset() {
+        this.x = (this.canvas.width - this.width) / 2;
+        this.y = (this.canvas.height - this.height);
+        this.canMove = false;
+        setTimeout(() => this.canMove = true, 500);
     }
 
     draw() {
         super.draw();
-        if (this.rightPressed && this.x < this.canvas.width - this.width) {
-            this.x += this.dx;
-        }
-        else if (this.leftPressed && this.x > 0) {
-            this.x -= this.dx;
+        if (this.canMove) {
+            if (this.rightPressed && this.x < this.canvas.width - this.width) {
+                this.x += this.dx;
+            }
+            else if (this.leftPressed && this.x > 0) {
+                this.x -= this.dx;
+            }
         }
 
     }
@@ -198,10 +270,16 @@ class Ball extends Shape {
         this.radius = 10;
         this.x = canvas.width / 2;
         this.y = canvas.height - 30;
-        this._speedMultiplier = 2;
+        this._speedMultiplier = 3;
         this.angle = Math.PI / 4;
         this._dx = Math.cos(this.angle);
         this._dy = -Math.sin(this.angle);
+    }
+
+    reset() {
+        this.x = this.canvas.width / 2;
+        this.y = this.canvas.height - 30;
+        this._speedMultiplier = 3;
     }
 
     flipdX() {
@@ -213,7 +291,7 @@ class Ball extends Shape {
     }
 
     draw() {
-        super.draw("arc", "blue", this.x, this.y, this.radius, 0, Math.PI * 2);
+        super.draw("arc", this.color, this.x, this.y, this.radius, 0, Math.PI * 2);
         this.x += this.dX * this._speedMultiplier;
         this.y += this.dY * this._speedMultiplier;
     }
@@ -236,36 +314,116 @@ class Ball extends Shape {
 
 }
 
-function hitBlock(ball, block) {
-    if (ball.x + ball.radius > block.x && ball.x - ball.radius < block.x + block.width) {
-        if (ball.y + ball.radius > block.y && ball.y + ball.radius < block.y + block.height) {
-            return true;
+/**
+ * The ball collision interaction function which will be used to dictate
+ * the behaviour of the ball after hitting a block. If it does hit the block
+ * the same reflection style will be used just like hitting that of the boundary wall.
+ * The broken brick will also be removed/hidden from the rest of the game.
+ *
+ * @param ball the ball hitting the bricks.
+ * @param bricks rooster of bricks which will be used to check.
+ * @param row  number of rows of bricks
+ * @param col number of columns of bricks
+ */
+function brickBallCollision(ball, bricks, row, col) {
+    let brick = getHitBlock(ball, bricks, row, col);
+    let result = false;
+    if (brick !== null) {
+
+        result = true;
+        if (ball.x > brick.x && ball.x < brick.x + brick.width) {
+            ball.flipdY();
+        } else {
+            ball.flipdX();
+        }
+
+
+    }
+    return result;
+
+}
+
+
+function getHitBlock(ball, bricks, row, col) {
+
+    let result = null;
+    for (let r = 0; r < row; r++) {
+        for (let c = 0; c < col; c++) {
+            if (collisionPresent(ball, bricks[r][c])) {
+                result = bricks[r][c];
+                bricks[r][c] = null;
+            }
+        }
+    }
+    return result;
+}
+
+
+function collisionPresent(ball, brick) {
+    if (brick) {
+        if (ball.x + ball.dX + ball.radius > brick.x && ball.x + ball.dX - ball.radius < brick.x + brick.width) {
+            if (ball.y + ball.dY + ball.radius > brick.y && ball.y + ball.dY - ball.radius < brick.y + brick.height) {
+                return true;
+            }
         }
     }
 
     return false;
 }
 
+/**
+ * Check if the ball has hit the arbitrary boundary and react accordingly.
+ *
+ */
 function ballWallCollision(ball, objY, objX, x = 0, y = 0) {
-    if (ball.x + ball.dX > objX - ball.radius || ball.x + ball.dX < x - ball.radius) {
+    if (ball.x + ball.dX > objX - ball.radius || ball.x + ball.dX - ball.radius < x) {
         ball.flipdX();
     }
-    if (ball.y + ball.dY > objY - ball.radius || ball.y + ball.dY < y - ball.radius) {
+    if (ball.y + ball.dY > objY - ball.radius || ball.y + ball.dY - ball.radius < y) {
         ball.flipdY();
     }
 }
 
+
+/**
+ * Paddle collision detection and reaction of the ball are done in this function.
+ * The width of the paddle is used as a scale from 0 to 1 with the ball hitting at
+ * 0.5 reflected at 90 degree angle.
+ * If the ball hits the end of the paddle, it will be reflected at 30 degree.
+ *
+ * The ball will always be reflected at 30 degree if the paddle is moving right and 150 degree
+ * if it is moving left.
+ *
+ * Hitting the left half of the paddle will reflect the ball to the left and analogous for the right.
+ *
+ * @param ball the incoming ball to be checked.
+ * @param paddle the paddle which will be used to hit the ball.
+ */
 function paddleBallCollision(ball, paddle) {
     if (ball.y + ball.dY + ball.radius > paddle.y) {
         if (ball.x + ball.radius > paddle.x && ball.x - ball.radius < paddle.x + paddle.width) {
 
             let relativeDist = (ball.x - paddle.x) / paddle.width;
-            ball.angle = (1 - relativeDist) * (2 * Math.PI) / 3 + Math.PI / 6;
+
+            let oneFifty = (2 * Math.PI) / 3 + Math.PI / 6
+            /**  150 - 30 degree range, left and right half of the paddle respectively
+             *   Horizontal reflection aren't calculated. (180 and 0 degree)
+             * **/
+            ball.angle = (1 - relativeDist) * oneFifty;
+
+            let movingAngle = oneFifty;
+            if (paddle.rightPressed) {
+                ball.angle = Math.PI - movingAngle;
+            }
+            if (paddle.leftPressed) {
+                ball.angle = movingAngle;
+            }
+
             ball.dY = -Math.sin(ball.angle);
             ball.dX = Math.cos(ball.angle);
 
-            if (ball._speedMultiplier <= 4) {
-                ball._speedMultiplier += 0.1;
+            if (ball._speedMultiplier <= 12) {
+                ball._speedMultiplier += 0.5;
             }
         }
     }
