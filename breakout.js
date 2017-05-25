@@ -19,11 +19,11 @@ class Breakout {
         ballWallCollision(this.ball, this.canvas.height, this.canvas.width);
         paddleBallCollision(this.ball, this.paddle);
 
-        if (brickBallCollision(this.ball, this.bricks, this.bricksRowCount, this.bricksColumnCount)) {
+        if (brickBallCollision(this.ball, this.bricks)) {
             this.bricksColor = getRandomColor();
             this.score.increment();
         }
-        this.bricks.forEach((row, index) => row.filter(e => e !== null).forEach((brick, index1) => brick.draw(this.bricksColor)));
+        this.bricks.forEach((brick) => brick.draw(this.bricksColor));
         this.paddle.draw();
         this.ball.draw();
         this.score.draw();
@@ -38,10 +38,7 @@ class Breakout {
     addEventHandlers() {
         let $document = $(document);
         let $dialoogvenster = $("#dialoogvenster");
-        $document.keydown((e) => this.paddle.keyHandler(e, true));
-        $document.keyup((e) => this.paddle.keyHandler(e, false));
-        $document.keydown((e) => this.paddle.speedHandler(e, 14));
-        $document.keyup((e) => this.paddle.speedHandler(e, this.paddle.defaultDx));
+
         $dialoogvenster.find('.btn').click(() => {
             this.animationID = requestAnimationFrame(() => this.draw());
             this.newGame();
@@ -77,14 +74,15 @@ class Breakout {
      * @param offsetLeft distance of the brick group from the left edge of the canvas
      */
     constructBricks(row, col, height, width, padding, offsetTop, offsetLeft) {
-        this.bricks = [];
+        this.bricks = new Set();
+
 
         for (let r = 0; r < row; r++) {
-            this.bricks[r] = [];
             for (let c = 0; c < col; c++) {
                 let brickX = (c * (width + padding)) + offsetLeft;
                 let brickY = (r * (height + padding)) + offsetTop;
-                this.bricks[r][c] = new Rectangle(this.canvas, this.ctx, height, width, brickX, brickY);
+                let brick = new Rectangle(this.canvas, this.ctx, height, width, brickX, brickY);
+                this.bricks.add(brick);
             }
         }
     }
@@ -97,8 +95,7 @@ class Breakout {
         /**
          * Winning check
          */
-
-        if (this.score.value === this.bricksRowCount * this.bricksColumnCount) {
+        if (this.bricks.size === 0) {
             dialog("#dialoogvenster", "success", "Starting new game...", "Victory!");
             cancelAnimationFrame(this.animationID);
         }
@@ -202,7 +199,17 @@ class Paddle extends Rectangle {
         this.defaultDx = 7;
         this.dx = 7;
         this.canMove = true;
+        this.initializePaddleControls();
 
+    }
+
+    initializePaddleControls() {
+        let $document = $(document);
+        $document.mousemove((e) => this.mouseMoveHandler(e));
+        $document.keydown((e) => this.keyHandler(e, true));
+        $document.keyup((e) => this.keyHandler(e, false));
+        $document.keydown((e) => this.speedHandler(e, 14));
+        $document.keyup((e) => this.speedHandler(e, this.defaultDx));
     }
 
     /**
@@ -212,7 +219,10 @@ class Paddle extends Rectangle {
         this.x = (this.canvas.width - this.width) / 2;
         this.y = (this.canvas.height - this.height);
         this.canMove = false;
+        let $document = $(document);
+        $document.unbind("mousemove");
         setTimeout(() => this.canMove = true, 500);
+        setTimeout(() => $document.mousemove((e) => this.mouseMoveHandler(e)), 500);
     }
 
     draw() {
@@ -226,6 +236,13 @@ class Paddle extends Rectangle {
             }
         }
 
+    }
+
+    mouseMoveHandler(e) {
+        let relativeX = e.clientX - this.canvas.offsetLeft;
+        if (relativeX > 0 && relativeX < this.canvas.width) {
+            this.x = relativeX - this.width / 2;
+        }
     }
 
     /**
@@ -319,6 +336,7 @@ class Ball extends Shape {
 
 }
 
+
 /**
  * The ball collision interaction function which will be used to dictate
  * the behaviour of the ball after hitting a block. If it does hit the block
@@ -330,8 +348,8 @@ class Ball extends Shape {
  * @param row  number of rows of bricks
  * @param col number of columns of bricks
  */
-function brickBallCollision(ball, bricks, row, col) {
-    let brick = getHitBlock(ball, bricks, row, col);
+function brickBallCollision(ball, bricks) {
+    let brick = getHitBlock(ball, bricks);
     let result = false;
     if (brick !== null) {
 
@@ -342,24 +360,27 @@ function brickBallCollision(ball, bricks, row, col) {
             ball.flipdX();
         }
 
-
     }
     return result;
 
 }
 
 
-function getHitBlock(ball, bricks, row, col) {
+function getHitBlock(ball, bricks) {
 
     let result = null;
-    for (let r = 0; r < row; r++) {
-        for (let c = 0; c < col; c++) {
-            if (collisionPresent(ball, bricks[r][c])) {
-                result = bricks[r][c];
-                bricks[r][c] = null;
-            }
+    let iterBricks = bricks.values();
+    let count = 0;
+
+    while (result === null && count < bricks.size) {
+        let checkBrick = iterBricks.next().value;
+        if (collisionPresent(ball, checkBrick)) {
+            result = checkBrick;
         }
+        count++;
     }
+    bricks.delete(result);
+
     return result;
 }
 
@@ -372,7 +393,6 @@ function collisionPresent(ball, brick) {
             }
         }
     }
-
     return false;
 }
 
